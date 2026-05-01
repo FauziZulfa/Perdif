@@ -242,13 +242,12 @@ def teks_ke_html(teks):
     teks = re.sub(r'(\w+)\*\*(\d+)', r'\1<sup>\2</sup>', teks)
     return teks
 
-def sympy_ke_html(eksp):
-    """Mengubah ekspresi SymPy menjadi tampilan HTML dengan pecahan atas-bawah."""
+def sympy_ke_html(eksp, sederhanakan_dulu=True):
     import re
 
-    eksp = sp.together(eksp)   
-    
-    # Ambil pembilang dan penyebut
+    if sederhanakan_dulu:
+        eksp = sp.together(eksp)
+
     pembilang = sp.numer(eksp)
     penyebut  = sp.denom(eksp)
 
@@ -256,26 +255,13 @@ def sympy_ke_html(eksp):
         teks = str(bagian)\
             .replace("log(", "ln(")\
             .replace("atan(", "arctan(")
-    
-        import re
-        # Ubah pangkat dulu
         teks = re.sub(r'(\w+)\*\*(\d+)', r'\1<sup>\2</sup>', teks)
-    
-        # Baru ganti perkalian
         teks = teks.replace("*", "")
-
         return teks
 
     if penyebut != 1:
-        # Ada penyebut → tampilkan sebagai pecahan atas-bawah
-        p_html = format_bagian(pembilang)
-        q_html = format_bagian(penyebut)
-        return f"""<span class="pecahan">
-            <span class="pecahan-atas">{p_html}</span>
-            <span class="pecahan-bawah">{q_html}</span>
-        </span>"""
+        return f'<span class="pecahan"><span class="pecahan-atas">{format_bagian(pembilang)}</span><span class="pecahan-bawah">{format_bagian(penyebut)}</span></span>'
     else:
-        # Tidak ada pecahan → tampilkan biasa
         return format_bagian(pembilang)
 
 def rapikan_solusi_html(solusi):
@@ -458,7 +444,7 @@ def format_teks_pecahan(teks):
     # Ganti sisa ** menjadi superscript
     teks = re.sub(r'\*\*(\d+)', r'<sup>\1</sup>', teks)
 
-    # Ganti * menjadi ·
+    # Ganti * menjadi 
     teks = teks.replace("*", "")
 
     return teks
@@ -661,20 +647,19 @@ with tab2:
                         elif i == 1:
                             ekspresi_obj = fungsi_pd
                         
-                            # Ganti x dan y di string dengan cara yang aman
-                            # pakai regex agar hanya ganti x dan y yang berdiri sendiri
-                            import re
-                            ekspresi_mentah_str = re.sub(r'\bx\b', '(t*x)', ekspresi_langkah_bersih)
-                            ekspresi_mentah_str = re.sub(r'\by\b', '(t*y)', ekspresi_mentah_str)
-                        
-                            # Hasil SymPy
-                            ekspresi_diganti   = ekspresi_obj.subs(x, t*x).subs(y, t*y)
-                            ekspresi_sederhana = sp.simplify(ekspresi_diganti)
-                            hasil_bagi         = sp.simplify(ekspresi_diganti / ekspresi_obj)
-                        
-                            html_asli          = sympy_ke_html(ekspresi_obj)
                             ekspresi_mentah = ekspresi_obj.subs(x, t*x).subs(y, t*y)
-                            html_mentah = sympy_ke_html(ekspresi_mentah)
+                        
+                            # Cek apakah t masih ada setelah substitusi
+                            if t not in ekspresi_mentah.free_symbols:
+                                # t hilang karena dicoret otomatis → pakai simbol tx ty
+                                tx = sp.Symbol('tx')
+                                ty = sp.Symbol('ty')
+                                ekspresi_mentah = ekspresi_obj.subs(x, tx).subs(y, ty)
+                        
+                            html_mentah    = sympy_ke_html(ekspresi_mentah, sederhanakan_dulu=False)
+                            ekspresi_sederhana = sp.simplify(ekspresi_obj.subs(x, t*x).subs(y, t*y))
+                            hasil_bagi         = sp.simplify(ekspresi_obj.subs(x, t*x).subs(y, t*y) / ekspresi_obj)
+                            html_asli          = sympy_ke_html(ekspresi_obj)
                             html_sederhana     = sympy_ke_html(ekspresi_sederhana)
                             html_hasil         = sympy_ke_html(hasil_bagi)
                         
