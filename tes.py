@@ -611,18 +611,24 @@ Periksa kembali format penulisan PD-nya.
 # TAB 2: LANGKAH PENYELESAIAN
 # ════════════════════════════════════════════════════════════
 with tab2:
+    
     st.markdown("""
-    <div class="info-box">
-        Masukkan PD homogen, program akan menampilkan setiap langkah penyelesaiannya secara detail.<br>
-        Pangkat boleh pakai <b>^</b> atau <b>**</b>
-    </div>
-    """, unsafe_allow_html=True)
+        <div class="info-box">
+            ⚡ Gunakan <b>^</b> atau <b>**</b> untuk pangkat (contoh: x^2 atau x**2)
+        </div>
+        """, unsafe_allow_html=True)
 
     ekspresi_langkah = st.text_input(
         "Masukkan dy/dx =",
         placeholder="contoh: (x + y) / x",
         key="langkah_input"
     )
+
+    st.markdown("""
+        <div style="font-size:0.85rem; background:#fef3c7; padding:8px 12px; border-radius:6px; border-left:4px solid #f59e0b; color:#78350f;margin-bottom:15px;">
+        ⚠️ Perhatikan tanda kurung! Misal: (x + y) / (x - y), bukan x + y / x - y
+        </div>
+        """, unsafe_allow_html=True)
 
     if st.button("📖 Tampilkan Langkah!", key="btn_langkah"):
         if not ekspresi_langkah.strip():
