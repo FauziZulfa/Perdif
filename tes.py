@@ -620,7 +620,7 @@ with tab2:
 
     ekspresi_langkah = st.text_input(
         "Masukkan dy/dx =",
-        placeholder="contoh: (x + y) / x",
+        placeholder="contoh: (x + y) / (x - y)",
         key="langkah_input"
     )
 
