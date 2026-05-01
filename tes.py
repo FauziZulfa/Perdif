@@ -453,23 +453,27 @@ def format_teks_pecahan(teks):
 # BANK SOAL KUIS
 # ════════════════════════════════════════════════════════════
 bank_soal = [
-    {"soal": "(x + y) / x",          "label": "(x + y) / x"},
-    {"soal": "(y**2 - x**2)/(2*x*y)", "label": "(y² - x²) / (2xy)"},
-    {"soal": "(x**2 + 2*x*y)/x**2",  "label": "(x² + 2xy) / x²"},
-    {"soal": "y / x",                "label": "y / x"},
-    {"soal": "(x**2+y**2)/(x*y)",    "label": "(x² + y²) / (xy)"},
-    {"soal": "(x - y)/(x + y)",      "label": "(x - y) / (x + y)"},
-    {"soal": "2*y/x",                "label": "2y / x"},
+    {"soal": "(x + y) / x",              "label": "(x + y) / (x)"},
+    {"soal": "(y**2 - x**2)/(2*x*y)",    "label": "(y² - x²) / (2xy)"},
+    {"soal": "(x**2 + 2*x*y)/x**2",      "label": "(x² + 2xy) / (x²)"},
+    {"soal": "y / x",                    "label": "y / x"},
+    {"soal": "(x**2+y**2)/(x*y)",        "label": "(x² + y²) / (xy)"},
+    {"soal": "(x - y)/(x + y)",          "label": "(x - y) / (x + y)"},
+    {"soal": "2*y/x",                    "label": "(2y) / (x)"},
+    {"soal": "(x**2 - y**2)/(x*y)",      "label": "(x² - y²) / (xy)"},
+    {"soal": "(x**2 + x*y)/(x**2)",      "label": "(x² + xy) / (x²)"},
 ]
+
+JUMLAH_SOAL = len(bank_soal)
 
 # ════════════════════════════════════════════════════════════
 # INISIALISASI SESSION STATE
 # ════════════════════════════════════════════════════════════
-if 'skor'       not in st.session_state: st.session_state.skor       = 0
-if 'total'      not in st.session_state: st.session_state.total      = 0
-if 'soal_index' not in st.session_state: st.session_state.soal_index = random.randint(0, len(bank_soal)-1)
-if 'sudah_jawab'not in st.session_state: st.session_state.sudah_jawab= False
-if 'hasil_kuis' not in st.session_state: st.session_state.hasil_kuis = None
+if 'skor'        not in st.session_state: st.session_state.skor        = 0
+if 'soal_index'  not in st.session_state: st.session_state.soal_index  = 0
+if 'sudah_jawab' not in st.session_state: st.session_state.sudah_jawab = False
+if 'hasil_kuis'  not in st.session_state: st.session_state.hasil_kuis  = None
+if 'jawaban_per_soal' not in st.session_state: st.session_state.jawaban_per_soal = {}
 
 # ════════════════════════════════════════════════════════════
 # HEADER
@@ -690,50 +694,75 @@ with tab2:
 # TAB 3: KUIS LATIHAN
 # ════════════════════════════════════════════════════════════
 with tab3:
+    nomor     = st.session_state.soal_index
+    soal_skrg = bank_soal[nomor]
+
+    # ── Skor ────────────────────────────────────────────────
     st.markdown(f"""
     <div class="skor-box">
-        <div class="skor-angka">{st.session_state.skor}/{st.session_state.total}</div>
+        <div class="skor-angka">{st.session_state.skor}/{JUMLAH_SOAL}</div>
         <div class="skor-label">Skor Kuis</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
+    # ── Info ─────────────────────────────────────────────────
+    st.markdown(f"""
     <div class="info-box">
-        Tentukan solusi umum dari PD berikut dalam bentuk <b>C = ...</b><br>
-        Pangkat boleh pakai <b>^</b> atau <b>**</b>, perkalian pakai <b>*</b>
+        Soal <b>{nomor + 1}</b> dari <b>{JUMLAH_SOAL}</b> &nbsp;|&nbsp;
+        Jawaban dalam bentuk <b>C = ...</b> &nbsp;|&nbsp;
+        Gunakan <b>^</b> untuk pangkat
     </div>
     """, unsafe_allow_html=True)
 
-    soal_skrg = bank_soal[st.session_state.soal_index]
+    # ── Tampilkan soal ───────────────────────────────────────
+    html_soal = format_teks_pecahan(soal_skrg['label'])
     st.markdown(f"""
-    <div class="soal-box">dy/dx = {soal_skrg['label']}</div>
+    <div class="soal-box">
+        Soal {nomor + 1}: &nbsp;
+        <span class="pecahan"><span class="pecahan-atas">dy</span><span class="pecahan-bawah">dx</span></span>
+        &nbsp;= &nbsp;{html_soal}
+    </div>
     """, unsafe_allow_html=True)
 
+    # ── Cek apakah soal ini sudah dijawab sebelumnya ─────────
+    sudah_dijawab_sebelumnya = nomor in st.session_state.jawaban_per_soal
+
+    # ── Input jawaban ────────────────────────────────────────
     jawaban_user = st.text_input(
         "C = ",
         placeholder="tulis jawaban di sini...",
-        key="jawaban_kuis",
-        disabled=st.session_state.sudah_jawab
+        key=f"jawaban_kuis_{nomor}",
+        disabled=sudah_dijawab_sebelumnya
     )
 
-    kol1, kol2, kol3 = st.columns([1, 1, 1])
+    # ── Tombol navigasi dan jawab ────────────────────────────
+    kol1, kol2, kol3, kol4 = st.columns([1, 1, 1, 1])
 
     with kol1:
-        if st.button("✅ Jawab!", type="primary", disabled=st.session_state.sudah_jawab):
+        if st.button("⬅️ Sebelumnya", disabled=nomor == 0):
+            st.session_state.soal_index  -= 1
+            st.session_state.hasil_kuis  = st.session_state.jawaban_per_soal.get(nomor - 1)
+            st.rerun()
+
+    with kol2:
+        if st.button("➡️ Selanjutnya", disabled=nomor == JUMLAH_SOAL - 1):
+            st.session_state.soal_index  += 1
+            st.session_state.hasil_kuis  = st.session_state.jawaban_per_soal.get(nomor + 1)
+            st.rerun()
+
+    with kol3:
+        if st.button("✅ Jawab!", type="primary", disabled=sudah_dijawab_sebelumnya):
             if not jawaban_user.strip():
                 st.warning("Tulis jawaban dulu!")
             else:
-                st.session_state.total += 1
-                st.session_state.sudah_jawab = True
                 try:
                     fungsi_pd = sp.sympify(soal_skrg['soal'], locals={"x": x, "y": y})
-                    pd, y_fungsi = selesaikan_pd(fungsi_pd)
-                    solusi = sp.dsolve(pd)
+                    pd_obj, y_fungsi = selesaikan_pd(fungsi_pd)
+                    solusi = sp.dsolve(pd_obj)
                     jawaban_benar_str = rapikan_solusi_teks(solusi)
                     ruas_benar = jawaban_benar_str.split("C = ")[1] if "C = " in jawaban_benar_str else jawaban_benar_str
 
                     try:
-                        # Bersihkan jawaban user sebelum dicek
                         jawaban_bersih = bersihkan_input(jawaban_user)
                         eksp_user  = sp.sympify(jawaban_bersih, locals={"x": x, "y": y})
                         eksp_benar = sp.sympify(ruas_benar.replace("^", "**"), locals={"x": x, "y": y})
@@ -744,52 +773,49 @@ with tab3:
 
                     if benar:
                         st.session_state.skor += 1
-                        st.session_state.hasil_kuis = ("benar", ruas_benar)
+                        hasil = ("benar", ruas_benar)
                     else:
-                        st.session_state.hasil_kuis = ("salah", ruas_benar)
+                        hasil = ("salah", ruas_benar)
+
+                    # Simpan jawaban soal ini agar tidak bisa dijawab ulang
+                    st.session_state.jawaban_per_soal[nomor] = hasil
+                    st.session_state.hasil_kuis = hasil
 
                 except Exception as err:
                     st.session_state.hasil_kuis = ("error", str(err))
 
                 st.rerun()
 
-    with kol2:
-        if st.button("➡️ Soal Baru"):
-            st.session_state.soal_index  = random.randint(0, len(bank_soal)-1)
-            st.session_state.sudah_jawab = False
-            st.session_state.hasil_kuis  = None
+    with kol4:
+        if st.button("🔄 Reset", type="secondary"):
+            st.session_state.skor             = 0
+            st.session_state.soal_index       = 0
+            st.session_state.sudah_jawab      = False
+            st.session_state.hasil_kuis       = None
+            st.session_state.jawaban_per_soal = {}
             st.rerun()
 
-    with kol3:
-        if st.button("🔄 Reset Skor", type="secondary"):
-            st.session_state.skor        = 0
-            st.session_state.total       = 0
-            st.session_state.soal_index  = random.randint(0, len(bank_soal)-1)
-            st.session_state.sudah_jawab = False
-            st.session_state.hasil_kuis  = None
-            st.rerun()
-
-    if st.session_state.hasil_kuis:
-        status, info = st.session_state.hasil_kuis
+    # ── Tampilkan hasil jawaban ──────────────────────────────
+    hasil_tampil = st.session_state.jawaban_per_soal.get(nomor) or st.session_state.hasil_kuis
+    
+    if hasil_tampil:
+        status, info = hasil_tampil
         if status == "benar":
+            html_info = format_teks_pecahan(info)
             st.markdown(f"""
             <div class="hasil-sukses">
-✅ BENAR! Bagus sekali!
-
-Jawaban: C = {info}
+                ✅ BENAR! Bagus sekali!<br><br>
+                Jawaban: C = {html_info}
             </div>""", unsafe_allow_html=True)
         elif status == "salah":
+            html_info = format_teks_pecahan(info)
             st.markdown(f"""
             <div class="hasil-gagal">
-❌ SALAH.
-
-Jawabanmu : C = {jawaban_user}
-Yang benar: C = {info}
+                ❌ SALAH.<br><br>
+                Yang benar: C = {html_info}
             </div>""", unsafe_allow_html=True)
         else:
-            st.markdown(f"""
-            <div class="hasil-gagal">❌ Error: {info}</div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="hasil-gagal">❌ Error: {info}</div>', unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════
 # FOOTER
