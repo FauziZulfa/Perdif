@@ -340,9 +340,8 @@ def buat_langkah(ekspresi_str, ekspresi):
         f"maka PD ini Homogen Derajat 0"))
 
     # Langkah 3: Substitusi
-    langkah.append(("3️⃣  Substitusi v = y/x",
-        "Substitusi :\n\n"
-        "  misal:   y = vx  sehingga  v = y/x  ...(1)\n\n"
+    langkah.append(("3️⃣  Misalkan y = vx",
+        "  Misal:   y = vx  sehingga  v = y/x  ...(1)\n\n"
         "Turunkan y = vx terhadap x :\n\n"
                     "y = vx\n\n"
         "   dy/dx = v + x dv/dx ...(2)"))
@@ -357,7 +356,7 @@ def buat_langkah(ekspresi_str, ekspresi):
     if ruas_kanan == 0:
         langkah.append(("4️⃣  Bentuk Setelah Substitusi",
             f"dy/dx = {sympy_ke_html(ekspresi)}\n\n"
-            f"Substitusi y = vx:\n\n"
+            f"Substitusi (1) dan (2):\n\n"
             f"v + x dv/dx = {sympy_ke_html(ekspresi_v)}\n\n"
             f"x dv/dx = 0\n\n"
             f"dv/dx = 0"
@@ -365,7 +364,7 @@ def buat_langkah(ekspresi_str, ekspresi):
     
     else: langkah.append(("4️⃣  Bentuk Setelah Substitusi",
             f"dy/dx = {sympy_ke_html(ekspresi)}\n\n"
-            f"Substitusi y = vx:\n\n"
+            f"Substitusi (1) dan (2):\n\n"
             f"v + x dv/dx = {sympy_ke_html(ekspresi_v)}\n\n"
             f"x dv/dx = {sympy_ke_html(ekspresi_v)} - v = {sympy_ke_html(ruas_kanan)}\n\n"
             f"Pisahkan variabel x dan v :\n"

@@ -1,2 +1,0 @@
-# Perdif
-tugas perdif homogen
