@@ -285,7 +285,6 @@ def rapikan_solusi_html(solusi):
         return proses(solusi)
 
 def rapikan_solusi_teks(solusi):
-    """Versi teks biasa dari solusi (untuk pengecekan jawaban kuis)."""
     C = sp.Symbol('C')
 
     def proses(s):
@@ -294,14 +293,13 @@ def rapikan_solusi_teks(solusi):
         if c_solusi:
             rapi = str(sederhanakan(c_solusi[0]))\
                 .replace("log(", "ln(")\
-                .replace("atan(", "arctan(")\
-                .replace("**", "^")
+                .replace("atan(", "arctan(")
+                # ← hapus .replace("**", "^")
             return f"C = {rapi}"
         else:
             rapi = str(sederhanakan(s.rhs.subs(C1, C)))\
                 .replace("log(", "ln(")\
-                .replace("atan(", "arctan(")\
-                .replace("**", "^")
+                .replace("atan(", "arctan(")
             return f"y = {rapi}"
 
     if isinstance(solusi, list):
@@ -402,50 +400,52 @@ def buat_langkah(ekspresi_str, ekspresi):
 def format_teks_pecahan(teks):
     import re
 
-    def ganti_pecahan(atas, bawah):
-        atas  = re.sub(r'\*\*(\d+)', r'<sup>\1</sup>', atas)
-        bawah = re.sub(r'\*\*(\d+)', r'<sup>\1</sup>', bawah)
-        atas  = atas.replace("*", "")
-        bawah = bawah.replace("*", "")
-        return f'<span class="pecahan"><span class="pecahan-atas">{atas}</span><span class="pecahan-bawah">{bawah}</span></span>'
+    def format_isi(bagian):
+        bagian = re.sub(r'\*\*(\d+)', r'<sup>\1</sup>', bagian)
+        bagian = bagian.replace("*", "")  # ← hilangkan *
+        return bagian
 
-    # Prioritas 1: (sesuatu)**angka / (sesuatu)**angka — kurung tetap disertakan
+    def ganti_pecahan(atas, bawah):
+        return f'<span class="pecahan"><span class="pecahan-atas">{format_isi(atas)}</span><span class="pecahan-bawah">{format_isi(bawah)}</span></span>'
+
     def ganti_p1(m):
-        atas  = f"({m.group(1)}){m.group(2)}"   # (isi)**angka
-        bawah = f"({m.group(3)}){m.group(4)}"   # (isi)**angka
+        atas  = f"({m.group(1)}){m.group(2)}"
+        bawah = f"({m.group(3)}){m.group(4)}"
         return ganti_pecahan(atas, bawah)
 
-    teks = re.sub(
-        r'\(([^)]+)\)(\*\*\d+)\s*/\s*\(([^)]+)\)(\*\*\d+)',
-        ganti_p1, teks
-    )
+    teks = re.sub(r'\(([^)]+)\)(\*\*\d+)\s*/\s*\(([^)]+)\)(\*\*\d+)', ganti_p1, teks)
 
-    # Prioritas 2: (sesuatu)/(sesuatu)
+    teks = re.sub(r'\(([^)]+)\)\s*/\s*\(([^)]+)\)',
+                  lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
+
+    teks = re.sub(r'\(([^)]+)\)\s*/\s*([a-zA-Z]+\*\*\d+)',
+                  lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
+
+    teks = re.sub(r'([a-zA-Z0-9]+\*\*\d+)\s*/\s*([a-zA-Z0-9]+\*\*\d+)',
+                  lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
+
+    teks = re.sub(r'(\d+\*[a-zA-Z]+)\s*/\s*([a-zA-Z]+)',
+                  lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
+    # Prioritas 5b: kata**angka / kata — contoh: y**2/x
     teks = re.sub(
-        r'\(([^)]+)\)\s*/\s*\(([^)]+)\)',
-        lambda m: ganti_pecahan(m.group(1), m.group(2)),
+        r'\b([a-zA-Z]+)\*\*(\d+)\s*/\s*\b([a-zA-Z]+)\b',
+        lambda m: f'<span class="pecahan"><span class="pecahan-atas">{m.group(1)}<sup>{m.group(2)}</sup></span><span class="pecahan-bawah">{m.group(3)}</span></span>',
+        teks
+    )
+    
+    # Prioritas 5c: kata / kata**angka — contoh: x/y**2  
+    teks = re.sub(
+        r'\b([a-zA-Z]+)\b\s*/\s*([a-zA-Z]+)\*\*(\d+)',
+        lambda m: f'<span class="pecahan"><span class="pecahan-atas">{m.group(1)}</span><span class="pecahan-bawah">{m.group(2)}<sup>{m.group(3)}</sup></span></span>',
         teks
     )
 
-    # Prioritas 3: kata**angka / kata**angka
-    teks = re.sub(
-        r'([a-zA-Z]+\*\*\d+)\s*/\s*([a-zA-Z]+\*\*\d+)',
-        lambda m: ganti_pecahan(m.group(1), m.group(2)),
-        teks
-    )
+    teks = re.sub(r'(?<!\()\b([a-zA-Z]+)\b\s*/\s*\b([a-zA-Z]+)\b(?!\))',
+                  lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
 
-    # Prioritas 4: kata/kata sederhana
-    teks = re.sub(
-        r'(?<!\()\b([a-zA-Z]+)\b\s*/\s*\b([a-zA-Z]+)\b(?!\))',
-        lambda m: ganti_pecahan(m.group(1), m.group(2)),
-        teks
-    )
-
-    # Ganti sisa ** menjadi superscript
     teks = re.sub(r'\*\*(\d+)', r'<sup>\1</sup>', teks)
 
-    # Ganti * menjadi 
-    teks = teks.replace("*", "")
+    teks = teks.replace("*", "")  # ← hilangkan semua sisa *
 
     return teks
 
@@ -454,14 +454,14 @@ def format_teks_pecahan(teks):
 # ════════════════════════════════════════════════════════════
 bank_soal = [
     {"soal": "(x + y) / x",              "label": "(x + y) / (x)"},
-    {"soal": "(y**2 - x**2)/(2*x*y)",    "label": "(y² - x²) / (2xy)"},
-    {"soal": "(x**2 + 2*x*y)/x**2",      "label": "(x² + 2xy) / (x²)"},
+    {"soal": "(y**2 - x**2)/(2*x*y)",    "label": "(y**2 - x**2) / (2*x*y)"},   # ← ganti
+    {"soal": "(x**2 + 2*x*y)/x**2",      "label": "(x**2 + 2*x*y) / (x**2)"},     # ← ganti
     {"soal": "y / x",                    "label": "y / x"},
-    {"soal": "(x**2+y**2)/(x*y)",        "label": "(x² + y²) / (xy)"},
+    {"soal": "(x**2+y**2)/(x*y)",        "label": "(x**2 + y**2) / (x*y)"},
     {"soal": "(x - y)/(x + y)",          "label": "(x - y) / (x + y)"},
-    {"soal": "2*y/x",                    "label": "(2y) / (x)"},
-    {"soal": "(x**2 - y**2)/(x*y)",      "label": "(x² - y²) / (xy)"},
-    {"soal": "(x**2 + x*y)/(x**2)",      "label": "(x² + xy) / (x²)"},
+    {"soal": "2*y/x",                    "label": "2*y / x"},
+    {"soal": "(x**2 - y**2)/(x*y)",      "label": "(x**2 - y**2) / (x*y)"},
+    {"soal": "(x**2 + x*y)/(x**2)",      "label": "(x**2 + x*y) / x**2"},
 ]
 
 JUMLAH_SOAL = len(bank_soal)
@@ -719,7 +719,10 @@ with tab3:
     st.markdown(f"""
     <div class="soal-box">
         Soal {nomor + 1}: &nbsp;
-        <span class="pecahan"><span class="pecahan-atas">dy</span><span class="pecahan-bawah">dx</span></span>
+        <span class="pecahan">
+            <span class="pecahan-atas">dy</span>
+            <span class="pecahan-bawah">dx</span>
+        </span>
         &nbsp;= &nbsp;{html_soal}
     </div>
     """, unsafe_allow_html=True)
@@ -801,6 +804,7 @@ with tab3:
     if hasil_tampil:
         status, info = hasil_tampil
         if status == "benar":
+            # info sudah pakai **, langsung format
             html_info = format_teks_pecahan(info)
             st.markdown(f"""
             <div class="hasil-sukses">
