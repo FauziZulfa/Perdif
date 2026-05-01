@@ -197,8 +197,19 @@ C1 = sp.Symbol('C1')
 # ════════════════════════════════════════════════════════════
 
 def bersihkan_input(teks):
-    """Mengubah ^ menjadi ** agar bisa dibaca SymPy."""
-    return teks.replace("^", "**")
+    teks = teks.replace("^", "**")
+
+    # ubah titik jadi *
+    teks = teks.replace(".", "*")
+
+    teks = teks.replace(" ", "")
+
+    # tambahin * otomatis: 2x → 2*x, xy → x*y
+    import re
+    teks = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', teks)   # 2x → 2*x
+    teks = re.sub(r'([a-zA-Z])([a-zA-Z])', r'\1*\2', teks)  # xy → x*y
+
+    return teks
 
 def cek_homogen(ekspresi):
     """Mengecek apakah PD homogen derajat 0 atau tidak."""
@@ -378,14 +389,14 @@ def buat_langkah(ekspresi_str, ekspresi):
     if ruas_kanan == 0: 
         langkah.append(("5️⃣  Integralkan Kedua Ruas",
             "dv/dx = 0\n\n"
-            "Integrasi:\n"
+            "Hasil Integrasi:\n"
             "v = C\n\n"
             "Substitusi kembali v = y/x → y = Cx"
         ))
         
     else: langkah.append(("5️⃣  Integralkan Kedua Ruas",
             f"∫ {sympy_ke_html(1/ruas_kanan)} dv = ∫ {sympy_ke_html(1/x)} dx\n\n"
-            f"Hasil integrasi:\n"
+            f"Hasil Integrasi:\n"
             f"   {sympy_ke_html(integral_kiri)} = {sympy_ke_html(integral_kanan)} + C\n\n"
             f"Substitusi kembali v = y/x"
     ))
@@ -498,28 +509,34 @@ tab1, tab2, tab3 = st.tabs(["🔢  Kalkulator", "📖  Langkah Penyelesaian", "�
 with tab1:
     st.markdown("""
     <div class="info-box">
-        ⚡ Gunakan <b>*</b> untuk perkalian (contoh: x*y) &nbsp;|&nbsp;
-        Pangkat boleh pakai <b>^</b> atau <b>**</b> (contoh: x^2 atau x**2)
+        ⚡ Gunakan <b>^</b> atau <b>**</b> untuk pangkat (contoh: x^2 atau x**2)
     </div>
     """, unsafe_allow_html=True)
 
+
     ekspresi_str = st.text_input(
         "Masukkan dy/dx =",
-        placeholder="contoh: (x + y) / x",
+        placeholder="contoh: (x + y) / (x - y)",
         key="kalkulator_input"
     )
+    
+    st.markdown("""
+    <div style="font-size:0.85rem; background:#fef3c7; padding:8px 12px; border-radius:6px; border-left:4px solid #f59e0b; color:#78350f;">
+    ⚠️ Perhatikan tanda kurung! Misal: (x + y) / (x - y), bukan x + y / x - y
+    </div>
+    """, unsafe_allow_html=True)
 
     pakai_syarat = st.checkbox("Pakai syarat awal?")
 
     if pakai_syarat:
         st.markdown("""
-        <div class="info-box">Format: y(x_awal) = y_awal</div>
+        <div class="info-box">Format: y(x) = a</div>
         """, unsafe_allow_html=True)
         kol1, kol2 = st.columns(2)
         with kol1:
-            x_awal = st.number_input("x awal", value=1.0, key="x_awal")
+            x_awal = st.number_input("Masukkan nilai x : ", value=0.0, key="x_awal", step=1.0)
         with kol2:
-            y_awal = st.number_input("y awal", value=0.0, key="y_awal")
+            y_awal = st.number_input("Masukkan nilai a :", value=0.0, key="y_awal", step=1.0)
 
     if st.button("✨ Selesaikan!", type="primary", key="btn_kalkulator"):
         if not ekspresi_str.strip():
