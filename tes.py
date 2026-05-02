@@ -514,6 +514,7 @@ if 'soal_index'  not in st.session_state: st.session_state.soal_index  = 0
 if 'sudah_jawab' not in st.session_state: st.session_state.sudah_jawab = False
 if 'hasil_kuis'  not in st.session_state: st.session_state.hasil_kuis  = None
 if 'jawaban_per_soal' not in st.session_state: st.session_state.jawaban_per_soal = {}
+if 'tampil_balon' not in st.session_state: st.session_state.tampil_balon = False
 
 # ════════════════════════════════════════════════════════════
 # HEADER
@@ -845,7 +846,7 @@ with tab3:
                     if benar:
                         st.session_state.skor += 1
                         hasil = ("benar", ruas_benar)
-                        st.balloons()
+                        st.session_state.tampil_balon = True
                     else:
                         hasil = ("salah", ruas_benar)
 
@@ -889,6 +890,11 @@ with tab3:
             </div>""", unsafe_allow_html=True)
         else:
             st.markdown(f'<div class="hasil-gagal">❌ Error: {info}</div>', unsafe_allow_html=True)
+
+    # Tampilkan balon setelah rerun
+    if st.session_state.tampil_balon:
+        st.balloons()
+        st.session_state.tampil_balon = False
 
 # ════════════════════════════════════════════════════════════
 # FOOTER
