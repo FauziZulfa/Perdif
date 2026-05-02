@@ -891,6 +891,44 @@ with tab3:
         else:
             st.markdown(f'<div class="hasil-gagal">❌ Error: {info}</div>', unsafe_allow_html=True)
 
+    # ── Ringkasan hasil jika semua soal sudah dijawab ────────
+    if len(st.session_state.jawaban_per_soal) == JUMLAH_SOAL:
+        benar_list = []
+        salah_list = []
+        for nomor_soal, (status_soal, _) in st.session_state.jawaban_per_soal.items():
+            if status_soal == "benar":
+                benar_list.append(nomor_soal + 1)
+            else:
+                salah_list.append(nomor_soal + 1)
+
+        benar_str = ", ".join([f" {n}" for n in sorted(benar_list)]) or "-"
+        salah_str = ", ".join([f" {n}" for n in sorted(salah_list)]) or "-"
+
+        warna = "#16a34a" if st.session_state.skor >= JUMLAH_SOAL // 2 else "#dc2626"
+
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #f0fdf4, #dbeafe);
+            border: 2px solid {warna};
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 20px;
+            text-align: center;
+        ">
+            <div style="font-size: 2rem; margin-bottom: 8px;">🎉</div>
+            <div style="font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: bold; color: {warna};">
+                Kuis Selesai!
+            </div>
+            <div style="font-size: 2.5rem; font-weight: bold; color: {warna}; margin: 12px 0;">
+                {st.session_state.skor} / {JUMLAH_SOAL}
+            </div>
+            <div style="font-size: 0.9rem; color: #374151; margin-top: 12px; text-align: left; padding: 0 16px;">
+                ✅ <b>Benar:</b> {benar_str}<br><br>
+                ❌ <b>Salah:</b> {salah_str}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    
     # Tampilkan balon setelah rerun
     if st.session_state.tampil_balon:
         st.balloons()
