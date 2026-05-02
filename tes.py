@@ -653,7 +653,7 @@ with tab2:
     
     st.markdown("""
         <div class="info-box">
-            ⚡ Gunakan <b>^</b> atau <b>**</b> untuk pangkat (contoh: x^2 atau x**2)
+            ⚡ Gunakan <b>^</b> untuk pangkat (contoh: x^2)
         </div>
         """, unsafe_allow_html=True)
 
@@ -665,7 +665,8 @@ with tab2:
 
     st.markdown("""
         <div style="font-size:0.85rem; background:#fef3c7; padding:8px 12px; border-radius:6px; border-left:4px solid #f59e0b; color:#78350f;margin-bottom:15px;">
-        ⚠️ Perhatikan tanda kurung! Misal: (x + y) / (x - y), bukan x + y / x - y
+        ⚠️ Perhatikan tanda kurung! \n\n
+        Misal: (x + y) / (x - y), bukan x + y / x - y
         </div>
         """, unsafe_allow_html=True)
 
