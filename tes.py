@@ -845,6 +845,7 @@ with tab3:
                     if benar:
                         st.session_state.skor += 1
                         hasil = ("benar", ruas_benar)
+                        st.balloons()
                     else:
                         hasil = ("salah", ruas_benar)
 
