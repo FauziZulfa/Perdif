@@ -550,7 +550,7 @@ with tab1:
     st.markdown("""
     <div class="info-box">
         ⚡ Gunakan <b>^</b> untuk pangkat (contoh: x^2)<br>
-        ⚡ Fungsi trigonometri: <b>sin(x), cos(x), tan(x)</b>, dll.
+        ⚡ Gunakan <b>*</b> untuk perkalian (contoh: x*y)
     </div>
     """, unsafe_allow_html=True)
 
@@ -660,7 +660,7 @@ with tab2:
     st.markdown("""
         <div class="info-box">
             ⚡ Gunakan <b>^</b> untuk pangkat (contoh: x^2)<br>
-            ⚡ Fungsi trigonometri: <b>sin(x), cos(x), tan(x)</b>, dll.
+            ⚡ Gunakan <b>*</b> untuk perkalian (contoh: x*y)
         </div>
         """, unsafe_allow_html=True)
 
