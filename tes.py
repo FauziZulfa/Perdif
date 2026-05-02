@@ -215,9 +215,31 @@ def bersihkan_input(teks):
 
 def cek_homogen(ekspresi):
     """Mengecek apakah PD homogen derajat 0 atau tidak."""
-    ekspresi_diganti = ekspresi.subs(x, t*x).subs(y, t*y)
-    hasil = sp.simplify(ekspresi_diganti / ekspresi)
-    return t not in hasil.free_symbols
+    # Cek apakah ekspresi mengandung x dan y
+    simbol_yang_dikenal = {x, y}
+    simbol_dalam_ekspresi = ekspresi.free_symbols
+    
+    # Abaikan konstanta (angka) dan fungsi-fungsi matematika
+    simbol_yang_dikenal.update({sp.sin, sp.cos, sp.tan, sp.log, sp.exp})
+    
+    # Cek simbol asing
+    simbol_tak_dikenal = simbol_dalam_ekspresi - simbol_yang_dikenal - {t}
+    if simbol_tak_dikenal:
+        raise ValueError(f"Ekspresi mengandung simbol tak dikenal: {simbol_tak_dikenal}\n"
+                        f"Gunakan hanya variabel x dan y.")
+    
+    # Cek apakah ekspresi dependen pada x dan y
+    if len(simbol_dalam_ekspresi.intersection({x, y})) == 0:
+        raise ValueError("Ekspresi tidak mengandung variabel x dan/atau y. "
+                        "PD homogen harus fungsi dari x dan y.")
+    
+    # Lakukan uji homogenitas
+    try:
+        ekspresi_diganti = ekspresi.subs(x, t*x).subs(y, t*y)
+        hasil = sp.simplify(ekspresi_diganti / ekspresi)
+        return t not in hasil.free_symbols
+    except:
+        return False
 
 def selesaikan_pd(ekspresi):
     """Mengubah ekspresi menjadi bentuk persamaan differensial untuk dsolve."""
@@ -451,6 +473,22 @@ def format_teks_pecahan(teks):
 
     return teks
 
+
+def validasi_ekspresi(ekspresi_str, ekspresi):
+    """Validasi apakah ekspresi valid untuk PD homogen."""
+    simbol_tak_dikenal = ekspresi.free_symbols - {x, y, sp.sin, sp.cos, sp.tan, sp.log, sp.exp, sp.pi, sp.E}
+    
+    if simbol_tak_dikenal:
+        raise ValueError(f"❌ Simbol '{simbol_tak_dikenal}' tidak dikenal!\n"
+                        f"Hanya gunakan variabel x dan y, serta fungsi matematika standar.\n"
+                        f"Contoh: sin(x), cos(y), log(x), exp(x), dll.")
+    
+    if len(ekspresi.free_symbols.intersection({x, y})) == 0:
+        raise ValueError("❌ Ekspresi harus mengandung variabel x dan/atau y!\n"
+                        f"Contoh: x+y, (x**2 + y**2)/(x*y), dll.")
+    
+    return True
+
 # ════════════════════════════════════════════════════════════
 # BANK SOAL KUIS
 # ════════════════════════════════════════════════════════════
@@ -537,9 +575,11 @@ with tab1:
             """, unsafe_allow_html=True)
         else:
             try:
-                # Bersihkan input: ^ → **
                 ekspresi_bersih = bersihkan_input(ekspresi_str)
                 fungsi_pd = sp.sympify(ekspresi_bersih, locals={"x": x, "y": y})
+                
+                # Tambahkan validasi
+                validasi_ekspresi(ekspresi_str, fungsi_pd)
 
                 with st.spinner("Mengecek homogenitas..."):
                     homogen = cek_homogen(fungsi_pd)
@@ -592,6 +632,12 @@ with tab1:
 Program ini hanya menyelesaikan PD homogen derajat 0.
                     </div>""", unsafe_allow_html=True)
 
+            except ValueError as ve:
+                st.markdown(f'<div class="hasil-gagal">{ve}</div>', unsafe_allow_html=True)
+            except Exception as err:
+                st.markdown(f'<div class="hasil-gagal">❌ Error: {err}</div>', unsafe_allow_html=True)
+
+            
             except Exception as err:
                 st.markdown(f"""
                 <div class="hasil-gagal">
