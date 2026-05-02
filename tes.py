@@ -932,6 +932,47 @@ with tab3:
 # FOOTER
 # ════════════════════════════════════════════════════════════
 st.markdown("""
+<style>
+    /* Paksa dark mode */
+    html, body, [class*="css"], .stApp {
+        background-color: #0e1117 !important;
+        color: #fafafa !important;
+    }
+    
+    /* Input box */
+    .stTextInput input {
+        background-color: #262730 !important;
+        color: #fafafa !important;
+        border: 1px solid #444 !important;
+    }
+    
+    /* Checkbox */
+    .stCheckbox label {
+        color: #fafafa !important;
+    }
+    
+    /* Tab */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #0e1117 !important;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        color: #fafafa !important;
+    }
+    
+    /* Number input */
+    .stNumberInput input {
+        background-color: #262730 !important;
+        color: #fafafa !important;
+    }
+    
+    /* Tombol */
+    .stButton button {
+        background-color: #262730 !important;
+        color: #fafafa !important;
+        border: 1px solid #444 !important;
+    }
+</style>
 <div class="footer">
     🧮 Aplikasi PD Homogen &nbsp;|&nbsp; Kelompok 2
 </div>
