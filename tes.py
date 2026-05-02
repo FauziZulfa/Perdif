@@ -939,6 +939,6 @@ with tab3:
 # ════════════════════════════════════════════════════════════
 st.markdown("""
 <div class="footer">
-    🧮 Aplikasi PD Homogen &nbsp;|&nbsp; Kelompok 2 &nbsp;|&nbsp;
+    🧮 Aplikasi PD Homogen &nbsp;|&nbsp; Kelompok 2
 </div>
 """, unsafe_allow_html=True)
