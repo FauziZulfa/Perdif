@@ -199,30 +199,61 @@ C1 = sp.Symbol('C1')
 # ════════════════════════════════════════════════════════════
 
 def bersihkan_input(teks):
-    teks = teks.replace("^", "**")
+    """
+    Membersihkan input pengguna agar bisa diproses oleh Sympy.
+    - Mengganti ^ dengan **
+    - Menghapus spasi
+    - Melindungi nama fungsi agar tidak rusak
+    - Menyisipkan * secara otomatis di tempat yang tepat
+    """
+    # Daftar fungsi yang harus dilindungi (case sensitive)
+    func_names = [
+        "sin", "cos", "tan", "csc", "sec", "cot",
+        "arcsin", "arccos", "arctan",
+        "sinh", "cosh", "tanh",
+        "log", "ln", "exp", "sqrt"
+    ]
+    
+    # Simpan placeholder untuk setiap fungsi
+    placeholders = {}
+    for i, fn in enumerate(func_names):
+        placeholder = f"__FUNC{i}__"
+        placeholders[fn] = placeholder
 
-    # ubah titik jadi *
-    teks = teks.replace(".", "*")
+    # Urutkan fungsi dari yang terpanjang agar tidak tertabrak penggantian parsial
+    sorted_funcs = sorted(func_names, key=len, reverse=True)
+    for fn in sorted_funcs:
+        # Hanya ganti jika diikuti oleh '(' (agar tidak mengganti variabel bernama sama)
+        teks = re.sub(r'\b' + fn + r'(?=\()', placeholders[fn], teks)
 
-    teks = teks.replace(" ", "")
+    # Operasi pembersihan dasar
+    teks = teks.replace(" ", "")          # hilangkan semua spasi
+    teks = teks.replace("^", "**")        # ubah ^ menjadi ** untuk pangkat
 
-    # tambahin * otomatis: 2x → 2*x, xy → x*y
-    import re
-    teks = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', teks)   # 2x → 2*x
-    teks = re.sub(r'([a-zA-Z])([a-zA-Z])', r'\1*\2', teks)  # xy → x*y
+    # Tambahkan * secara implisit pada pola-pola tertentu
+    # 2x → 2*x
+    teks = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', teks)
+    # )( → )*(  (misal: (x+1)(x+2))
+    teks = re.sub(r'\)(\()', r')*\1', teks)
+    # )angka → )*angka
+    teks = re.sub(r'\)(\d)', r')*\1', teks)
+    # )huruf → )*huruf  (hati-hati dengan fungsi, tapi fungsi sudah dilindungi placeholder)
+    teks = re.sub(r'\)([a-zA-Z])', r')*\1', teks)
+
+    # Kembalikan placeholder ke nama fungsi asli
+    for fn, ph in placeholders.items():
+        teks = teks.replace(ph, fn)
 
     return teks
 
+
 def cek_homogen(ekspresi):
     """Mengecek apakah PD homogen derajat 0 atau tidak."""
-    # Cek apakah ekspresi mengandung x dan y
+    # Pastikan ekspresi mengandung x dan y
     simbol_yang_dikenal = {x, y}
     simbol_dalam_ekspresi = ekspresi.free_symbols
     
-    # Abaikan konstanta (angka) dan fungsi-fungsi matematika
-    simbol_yang_dikenal.update({sp.sin, sp.cos, sp.tan, sp.log, sp.exp})
-    
-    # Cek simbol asing
+    # Cek simbol asing (selain x, y, t)
     simbol_tak_dikenal = simbol_dalam_ekspresi - simbol_yang_dikenal - {t}
     if simbol_tak_dikenal:
         raise ValueError(f"Ekspresi mengandung simbol tak dikenal: {simbol_tak_dikenal}\n"
@@ -233,7 +264,7 @@ def cek_homogen(ekspresi):
         raise ValueError("Ekspresi tidak mengandung variabel x dan/atau y. "
                         "PD homogen harus fungsi dari x dan y.")
     
-    # Lakukan uji homogenitas
+    # Uji homogenitas
     try:
         ekspresi_diganti = ekspresi.subs(x, t*x).subs(y, t*y)
         hasil = sp.simplify(ekspresi_diganti / ekspresi)
@@ -255,18 +286,8 @@ def sederhanakan(ekspresi):
     faktor = sp.gcd(tuple(eks.as_coefficients_dict().values()))
     return sp.simplify(eks / faktor)
 
-def teks_ke_html(teks):
-    """Mengubah teks matematika menjadi tampilan HTML yang rapi.
-    - ** menjadi superscript (pangkat atas)
-    - / menjadi pecahan atas-bawah jika memungkinkan
-    """
-    # Ganti ** dengan superscript HTML
-    # Contoh: x**2 → x<sup>2</sup>
-    import re
-    teks = re.sub(r'(\w+)\*\*(\d+)', r'\1<sup>\2</sup>', teks)
-    return teks
-
 def sympy_ke_html(eksp, sederhanakan_dulu=True):
+    """Ubah ekspresi Sympy menjadi HTML dengan pecahan dan superscript."""
     import re
 
     if sederhanakan_dulu:
@@ -309,6 +330,7 @@ def rapikan_solusi_html(solusi):
         return proses(solusi)
 
 def rapikan_solusi_teks(solusi):
+    """Solusi dalam teks biasa (tanpa HTML)."""
     C = sp.Symbol('C')
 
     def proses(s):
@@ -318,7 +340,6 @@ def rapikan_solusi_teks(solusi):
             rapi = str(sederhanakan(c_solusi[0]))\
                 .replace("log(", "ln(")\
                 .replace("atan(", "arctan(")
-                # ← hapus .replace("**", "^")
             return f"C = {rapi}"
         else:
             rapi = str(sederhanakan(s.rhs.subs(C1, C)))\
@@ -337,13 +358,14 @@ def rapikan_angka(angka):
     return f"{float(angka):.3f}".rstrip('0').rstrip('.')
 
 def buat_langkah(ekspresi_str, ekspresi):
+    """Susun langkah-langkah penyelesaian."""
     langkah = []
 
     # Langkah 1: Tulis bentuk PD
     langkah.append(("1️⃣  Bentuk PD",
         f"dy/dx = {ekspresi_str}"))
 
-    # Langkah 2: Uji homogenitas - tampilkan proses lengkap
+    # Langkah 2: Uji homogenitas
     ekspresi_diganti = ekspresi.subs(x, t*x).subs(y, t*y)
     ekspresi_diganti_sederhana = sp.simplify(ekspresi_diganti)
     hasil_bagi = sp.simplify(ekspresi_diganti / ekspresi)
@@ -362,7 +384,7 @@ def buat_langkah(ekspresi_str, ekspresi):
     langkah.append(("3️⃣  Misalkan y = vx",
         "  Misal:   y = vx  sehingga  v = y/x  ...(1)\n\n"
         "Turunkan y = vx terhadap x :\n\n"
-                    "y = vx\n\n"
+        "y = vx\n\n"
         "   dy/dx = v + x dv/dx ...(2)"))
 
     # Langkah 4: Bentuk setelah substitusi
@@ -380,15 +402,15 @@ def buat_langkah(ekspresi_str, ekspresi):
             f"x dv/dx = 0\n\n"
             f"dv/dx = 0"
         ))
-    
-    else: langkah.append(("4️⃣  Bentuk Setelah Substitusi",
+    else:
+        langkah.append(("4️⃣  Bentuk Setelah Substitusi",
             f"dy/dx = {sympy_ke_html(ekspresi)}\n\n"
             f"Substitusi (1) dan (2):\n\n"
             f"v + x dv/dx = {sympy_ke_html(ekspresi_v)}\n\n"
             f"x dv/dx = {sympy_ke_html(ekspresi_v)} - v = {sympy_ke_html(ruas_kanan)}\n\n"
             f"Pisahkan variabel x dan v :\n"
             f"   {pecahan_kiri} dv = {pecahan_kanan} dx"
-    ))
+        ))
 
     # Langkah 5: Integrasi
     integral_kiri = sp.integrate(1/ruas_kanan, v)
@@ -401,13 +423,13 @@ def buat_langkah(ekspresi_str, ekspresi):
             "v = C\n\n"
             "Substitusi kembali v = y/x → y = Cx"
         ))
-        
-    else: langkah.append(("5️⃣  Integralkan Kedua Ruas",
+    else:
+        langkah.append(("5️⃣  Integralkan Kedua Ruas",
             f"∫ {sympy_ke_html(1/ruas_kanan)} dv = ∫ {sympy_ke_html(1/x)} dx\n\n"
             f"Hasil Integrasi:\n"
             f"   {sympy_ke_html(integral_kiri)} = {sympy_ke_html(integral_kanan)} + C\n\n"
             f"Substitusi kembali v = y/x"
-    ))
+        ))
 
     # Langkah 6: Solusi umum
     y_fungsi = sp.Function('y')
@@ -422,11 +444,12 @@ def buat_langkah(ekspresi_str, ekspresi):
 
 
 def format_teks_pecahan(teks):
+    """Mengubah teks matematika (string) menjadi HTML dengan pecahan dan superscript."""
     import re
 
     def format_isi(bagian):
         bagian = re.sub(r'\*\*(\d+)', r'<sup>\1</sup>', bagian)
-        bagian = bagian.replace("*", "")  # ← hilangkan *
+        bagian = bagian.replace("*", "")
         return bagian
 
     def ganti_pecahan(atas, bawah):
@@ -438,55 +461,41 @@ def format_teks_pecahan(teks):
         return ganti_pecahan(atas, bawah)
 
     teks = re.sub(r'\(([^)]+)\)(\*\*\d+)\s*/\s*\(([^)]+)\)(\*\*\d+)', ganti_p1, teks)
-
     teks = re.sub(r'\(([^)]+)\)\s*/\s*\(([^)]+)\)',
                   lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
-
     teks = re.sub(r'\(([^)]+)\)\s*/\s*([a-zA-Z]+\*\*\d+)',
                   lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
-
     teks = re.sub(r'([a-zA-Z0-9]+\*\*\d+)\s*/\s*([a-zA-Z0-9]+\*\*\d+)',
                   lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
-
     teks = re.sub(r'(\d+\*[a-zA-Z]+)\s*/\s*([a-zA-Z]+)',
                   lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
-    # Prioritas 5b: kata**angka / kata — contoh: y**2/x
     teks = re.sub(
         r'\b([a-zA-Z]+)\*\*(\d+)\s*/\s*\b([a-zA-Z]+)\b',
         lambda m: f'<span class="pecahan"><span class="pecahan-atas">{m.group(1)}<sup>{m.group(2)}</sup></span><span class="pecahan-bawah">{m.group(3)}</span></span>',
         teks
     )
-    
-    # Prioritas 5c: kata / kata**angka — contoh: x/y**2  
     teks = re.sub(
         r'\b([a-zA-Z]+)\b\s*/\s*([a-zA-Z]+)\*\*(\d+)',
         lambda m: f'<span class="pecahan"><span class="pecahan-atas">{m.group(1)}</span><span class="pecahan-bawah">{m.group(2)}<sup>{m.group(3)}</sup></span></span>',
         teks
     )
-
     teks = re.sub(r'(?<!\()\b([a-zA-Z]+)\b\s*/\s*\b([a-zA-Z]+)\b(?!\))',
                   lambda m: ganti_pecahan(m.group(1), m.group(2)), teks)
-
     teks = re.sub(r'\*\*(\d+)', r'<sup>\1</sup>', teks)
-
-    teks = teks.replace("*", "")  # ← hilangkan semua sisa *
-
+    teks = teks.replace("*", "")
     return teks
 
 
 def validasi_ekspresi(ekspresi_str, ekspresi):
-    """Validasi apakah ekspresi valid untuk PD homogen."""
-    simbol_tak_dikenal = ekspresi.free_symbols - {x, y, sp.sin, sp.cos, sp.tan, sp.log, sp.exp, sp.pi, sp.E}
-    
+    """Validasi hanya x dan y yang menjadi variabel."""
+    simbol_tak_dikenal = ekspresi.free_symbols - {x, y}
     if simbol_tak_dikenal:
         raise ValueError(f"❌ Simbol '{simbol_tak_dikenal}' tidak dikenal!\n"
                         f"Hanya gunakan variabel x dan y, serta fungsi matematika standar.\n"
                         f"Contoh: sin(x), cos(y), log(x), exp(x), dll.")
-    
     if len(ekspresi.free_symbols.intersection({x, y})) == 0:
         raise ValueError("❌ Ekspresi harus mengandung variabel x dan/atau y!\n"
                         f"Contoh: x+y, (x**2 + y**2)/(x*y), dll.")
-    
     return True
 
 # ════════════════════════════════════════════════════════════
@@ -494,8 +503,8 @@ def validasi_ekspresi(ekspresi_str, ekspresi):
 # ════════════════════════════════════════════════════════════
 bank_soal = [
     {"soal": "(x + y) / x",              "label": "(x + y) / (x)"},
-    {"soal": "(y**2 - x**2)/(2*x*y)",    "label": "(y**2 - x**2) / (2*x*y)"},   # ← ganti
-    {"soal": "(x**2 + 2*x*y)/x**2",      "label": "(x**2 + 2*x*y) / (x**2)"},     # ← ganti
+    {"soal": "(y**2 - x**2)/(2*x*y)",    "label": "(y**2 - x**2) / (2*x*y)"},
+    {"soal": "(x**2 + 2*x*y)/x**2",      "label": "(x**2 + 2*x*y) / (x**2)"},
     {"soal": "y / x",                    "label": "y / x"},
     {"soal": "(x**2+y**2)/(x*y)",        "label": "(x**2 + y**2) / (x*y)"},
     {"soal": "(x - y)/(x + y)",          "label": "(x - y) / (x + y)"},
@@ -540,10 +549,10 @@ tab1, tab2, tab3 = st.tabs(["🔢  Kalkulator", "📖  Langkah Penyelesaian", "�
 with tab1:
     st.markdown("""
     <div class="info-box">
-        ⚡ Gunakan <b>^</b> untuk pangkat (contoh: x^2)
+        ⚡ Gunakan <b>^</b> untuk pangkat (contoh: x^2)<br>
+        ⚡ Fungsi trigonometri: <b>sin(x), cos(x), tan(x)</b>, dll.
     </div>
     """, unsafe_allow_html=True)
-
 
     ekspresi_str = st.text_input(
         "Masukkan dy/dx =",
@@ -553,7 +562,7 @@ with tab1:
     
     st.markdown("""
     <div style="font-size:0.85rem; background:#fef3c7; padding:8px 12px; border-radius:6px; border-left:4px solid #f59e0b; color:#78350f;margin-bottom:15px;">
-    ⚠️ Perhatikan tanda kurung! \n\nMisal: (x + y) / (x - y), bukan x + y / x - y
+    ⚠️ Perhatikan tanda kurung! Misal: (x + y) / (x - y), bukan x + y / x - y
     </div>
     """, unsafe_allow_html=True)
 
@@ -579,7 +588,6 @@ with tab1:
                 ekspresi_bersih = bersihkan_input(ekspresi_str)
                 fungsi_pd = sp.sympify(ekspresi_bersih, locals={"x": x, "y": y})
                 
-                # Tambahkan validasi
                 validasi_ekspresi(ekspresi_str, fungsi_pd)
 
                 with st.spinner("Mengecek homogenitas..."):
@@ -599,7 +607,6 @@ with tab1:
                         if nilai_c:
                             angka_c = nilai_c[0]
                             solusi_html = rapikan_solusi_html(solusi_umum)
-                            # Ambil bagian kanan dari "C = ..."
                             ruas_html = solusi_html.split("C = ", 1)[1] if "C = " in solusi_html else solusi_html
                             st.markdown(f"""
                             <div class="solusi-box">
@@ -638,7 +645,6 @@ Program ini hanya menyelesaikan PD homogen derajat 0.
             except Exception as err:
                 st.markdown(f'<div class="hasil-gagal">❌ Error: {err}</div>', unsafe_allow_html=True)
 
-            
             except Exception as err:
                 st.markdown(f"""
                 <div class="hasil-gagal">
@@ -653,7 +659,8 @@ with tab2:
     
     st.markdown("""
         <div class="info-box">
-            ⚡ Gunakan <b>^</b> untuk pangkat (contoh: x^2)
+            ⚡ Gunakan <b>^</b> untuk pangkat (contoh: x^2)<br>
+            ⚡ Fungsi trigonometri: <b>sin(x), cos(x), tan(x)</b>, dll.
         </div>
         """, unsafe_allow_html=True)
 
@@ -665,7 +672,7 @@ with tab2:
 
     st.markdown("""
         <div style="font-size:0.85rem; background:#fef3c7; padding:8px 12px; border-radius:6px; border-left:4px solid #f59e0b; color:#78350f;margin-bottom:15px;">
-        ⚠️ Perhatikan tanda kurung! \n\n Misal: (x + y) / (x - y), bukan x + y / x - y
+        ⚠️ Perhatikan tanda kurung! Misal: (x + y) / (x - y), bukan x + y / x - y
         </div>
         """, unsafe_allow_html=True)
 
@@ -674,7 +681,7 @@ with tab2:
             st.markdown("""
             <div class="hasil-peringatan">⚠️ Masukkan persamaan differensial terlebih dahulu.</div>
             """, unsafe_allow_html=True)
-        else:                                               # ← else ini masuk ke dalam if st.button
+        else:
             try:
                 ekspresi_langkah_bersih = bersihkan_input(ekspresi_langkah)
                 fungsi_pd = sp.sympify(ekspresi_langkah_bersih, locals={"x": x, "y": y})
@@ -693,18 +700,15 @@ with tab2:
                         """, unsafe_allow_html=True)
                     
                         if i == 0:
-                            # Proses seluruh teks termasuk dy/dx sebagai pecahan
                             isi_html = format_teks_pecahan(isi_l)
                             st.markdown(isi_html, unsafe_allow_html=True)
                     
                         elif i == 1:
                             ekspresi_obj = fungsi_pd
-                        
                             ekspresi_mentah = ekspresi_obj.subs(x, t*x).subs(y, t*y)
                         
-                            # Cek apakah t masih ada setelah substitusi
+                            # Jika t hilang karena dicoret, gunakan simbol tx, ty
                             if t not in ekspresi_mentah.free_symbols:
-                                # t hilang karena dicoret otomatis → pakai simbol tx ty
                                 tx = sp.Symbol('tx')
                                 ty = sp.Symbol('ty')
                                 ekspresi_mentah = ekspresi_obj.subs(x, tx).subs(y, ty)
@@ -716,7 +720,6 @@ with tab2:
                             html_sederhana     = sympy_ke_html(ekspresi_sederhana)
                             html_hasil         = sympy_ke_html(hasil_bagi)
                         
-                            # Tampilkan dengan urutan yang benar
                             st.markdown("Ganti x → tx &nbsp; dan &nbsp; y → ty :", unsafe_allow_html=True)
                             st.markdown(f"**f(x, y)** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= &nbsp;{html_asli}", unsafe_allow_html=True)
                             st.markdown(f"**f(tx, ty)** = &nbsp;{html_mentah}", unsafe_allow_html=True)
@@ -746,7 +749,6 @@ with tab3:
     nomor     = st.session_state.soal_index
     soal_skrg = bank_soal[nomor]
 
-    # ── Skor ────────────────────────────────────────────────
     st.markdown(f"""
     <div class="skor-box">
         <div class="skor-angka">{st.session_state.skor}/{JUMLAH_SOAL}</div>
@@ -754,7 +756,6 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Info ─────────────────────────────────────────────────
     st.markdown(f"""
     <div class="info-box">
         Soal <b>{nomor + 1}</b> dari <b>{JUMLAH_SOAL}</b> &nbsp;|&nbsp;
@@ -763,7 +764,6 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Tampilkan soal ───────────────────────────────────────
     html_soal = format_teks_pecahan(soal_skrg['label'])
     st.markdown(f"""
     <div class="soal-box">
@@ -776,10 +776,8 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Cek apakah soal ini sudah dijawab sebelumnya ─────────
     sudah_dijawab_sebelumnya = nomor in st.session_state.jawaban_per_soal
 
-    # ── Input jawaban ────────────────────────────────────────
     jawaban_user = st.text_input(
         "C = ",
         placeholder="tulis jawaban di sini...",
@@ -787,7 +785,6 @@ with tab3:
         disabled=sudah_dijawab_sebelumnya
     )
 
-    # ── Tombol navigasi dan jawab ────────────────────────────
     kol1, kol2, kol3, kol4 = st.columns([1, 1, 1, 1])
 
     with kol1:
@@ -819,18 +816,18 @@ with tab3:
                         eksp_user  = sp.sympify(jawaban_bersih, locals={"x": x, "y": y})
                         eksp_benar = sp.sympify(ruas_benar.replace("^", "**"), locals={"x": x, "y": y})
                     
-                        # Cek 1: selisihnya nol (sama persis)
+                        # Cek selisih
                         selisih = sp.simplify(eksp_user - eksp_benar)
                         cek1 = selisih == 0
                     
-                        # Cek 2: rasionya konstanta (hanya beda faktor angka)
+                        # Cek rasio (hanya beda konstanta pengali)
                         try:
                             rasio = sp.simplify(eksp_user / eksp_benar)
                             cek2 = rasio.is_number and rasio != 0
                         except:
                             cek2 = False
                     
-                        # Cek 3: setelah dinormalisasi (dibagi koefisien terbesar) sama
+                        # Cek setelah normalisasi koefisien
                         try:
                             koef_user  = eksp_user  / sp.gcd(tuple(sp.Poly(eksp_user,  x, y).coeffs()))
                             koef_benar = eksp_benar / sp.gcd(tuple(sp.Poly(eksp_benar, x, y).coeffs()))
@@ -850,7 +847,6 @@ with tab3:
                     else:
                         hasil = ("salah", ruas_benar)
 
-                    # Simpan jawaban soal ini agar tidak bisa dijawab ulang
                     st.session_state.jawaban_per_soal[nomor] = hasil
                     st.session_state.hasil_kuis = hasil
 
@@ -868,13 +864,12 @@ with tab3:
             st.session_state.jawaban_per_soal = {}
             st.rerun()
 
-    # ── Tampilkan hasil jawaban ──────────────────────────────
+    # Tampilkan hasil
     hasil_tampil = st.session_state.jawaban_per_soal.get(nomor) or st.session_state.hasil_kuis
     
     if hasil_tampil:
         status, info = hasil_tampil
         if status == "benar":
-            # info sudah pakai **, langsung format
             html_info = format_teks_pecahan(info)
             st.markdown(f"""
             <div class="hasil-sukses">
@@ -891,7 +886,7 @@ with tab3:
         else:
             st.markdown(f'<div class="hasil-gagal">❌ Error: {info}</div>', unsafe_allow_html=True)
 
-    # ── Ringkasan hasil jika semua soal sudah dijawab ────────
+    # Ringkasan akhir kuis
     if len(st.session_state.jawaban_per_soal) == JUMLAH_SOAL:
         benar_list = []
         salah_list = []
@@ -929,7 +924,6 @@ with tab3:
         </div>
         """, unsafe_allow_html=True)
     
-    # Tampilkan balon setelah rerun
     if st.session_state.tampil_balon:
         st.balloons()
         st.session_state.tampil_balon = False
