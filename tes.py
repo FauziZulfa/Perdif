@@ -769,8 +769,28 @@ with tab3:
                         jawaban_bersih = bersihkan_input(jawaban_user)
                         eksp_user  = sp.sympify(jawaban_bersih, locals={"x": x, "y": y})
                         eksp_benar = sp.sympify(ruas_benar.replace("^", "**"), locals={"x": x, "y": y})
+                    
+                        # Cek 1: selisihnya nol (sama persis)
                         selisih = sp.simplify(eksp_user - eksp_benar)
-                        benar = selisih == 0 or sp.simplify(eksp_user / eksp_benar).is_number
+                        cek1 = selisih == 0
+                    
+                        # Cek 2: rasionya konstanta (hanya beda faktor angka)
+                        try:
+                            rasio = sp.simplify(eksp_user / eksp_benar)
+                            cek2 = rasio.is_number and rasio != 0
+                        except:
+                            cek2 = False
+                    
+                        # Cek 3: setelah dinormalisasi (dibagi koefisien terbesar) sama
+                        try:
+                            koef_user  = eksp_user  / sp.gcd(tuple(sp.Poly(eksp_user,  x, y).coeffs()))
+                            koef_benar = eksp_benar / sp.gcd(tuple(sp.Poly(eksp_benar, x, y).coeffs()))
+                            cek3 = sp.simplify(koef_user - koef_benar) == 0
+                        except:
+                            cek3 = False
+                    
+                        benar = cek1 or cek2 or cek3
+                    
                     except:
                         benar = False
 
