@@ -235,6 +235,16 @@ html, body, [class*="css"], .stApp {
     color: #aaaaaa !important;
 }
 
+/* Paksa warna teks checkbox */
+.stCheckbox p,
+.stCheckbox span,
+.stCheckbox label,
+[data-testid="stCheckbox"] p,
+[data-testid="stCheckbox"] span,
+[data-testid="stCheckbox"] label {
+    color: #fafafa !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
