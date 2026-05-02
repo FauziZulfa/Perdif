@@ -221,6 +221,20 @@ html, body, [class*="css"], .stApp {
     color: #fafafa !important;
     border: 1px solid #444 !important;
 }
+
+            /* Paksa warna teks label input selalu putih */
+.stTextInput label, 
+.stNumberInput label,
+.stCheckbox label,
+.stSelectbox label {
+    color: #fafafa !important;
+}
+
+/* Placeholder teks di dalam kotak input */
+.stTextInput input::placeholder {
+    color: #aaaaaa !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
