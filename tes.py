@@ -372,49 +372,63 @@ def sympy_ke_html(eksp, sederhanakan_dulu=True):
     else:
         return format_bagian(pembilang)
 
-def rapikan_solusi_html(solusi):
-    """Mengubah solusi dsolve menjadi HTML dengan pecahan atas-bawah."""
+def rapikan_solusi_html(solusi, integrand_v=None, integral_kanan=None):
+    """
+    Solusi ke HTML. Jika solusi mengandung Integral dan integrand_v disediakan,
+    tampilkan bentuk: ∫ (integrand_v) dv = integral_kanan + C.
+    """
     C = sp.Symbol('C')
 
     def proses(s):
         persamaan = s.subs(C1, C)
         c_solusi = sp.solve(persamaan, C)
         if c_solusi:
-            eksp = sederhanakan(c_solusi[0])
-            return f"C = {sympy_ke_html(eksp)}"
+            if isinstance(c_solusi[0], sp.Eq):
+                eksp = sederhanakan(c_solusi[0].rhs)
+            else:
+                eksp = sederhanakan(c_solusi[0])
         else:
             eksp = sederhanakan(s.rhs.subs(C1, C))
-            return f"y = {sympy_ke_html(eksp)}"
+
+        if eksp.has(sp.Integral) and integrand_v is not None and integral_kanan is not None:
+            return (f"&int; {sympy_ke_html(integrand_v)} dv = "
+                    f"{sympy_ke_html(integral_kanan)} + C<br>"
+                    f"(v = y/x)")
+        else:
+            return f"C = {sympy_ke_html(eksp)}"
 
     if isinstance(solusi, list):
         hasil = list(dict.fromkeys([proses(s) for s in solusi]))
         return "<br>".join(hasil)
-    else:
-        return proses(solusi)
+    return proses(solusi)
 
-def rapikan_solusi_teks(solusi):
-    """Solusi dalam teks biasa (tanpa HTML)."""
+
+def rapikan_solusi_teks(solusi, integrand_v=None, integral_kanan=None):
+    """Solusi teks biasa."""
     C = sp.Symbol('C')
 
     def proses(s):
         persamaan = s.subs(C1, C)
         c_solusi = sp.solve(persamaan, C)
         if c_solusi:
-            rapi = str(sederhanakan(c_solusi[0]))\
-                .replace("log(", "ln(")\
-                .replace("atan(", "arctan(")
-            return f"C = {rapi}"
+            if isinstance(c_solusi[0], sp.Eq):
+                eksp = sederhanakan(c_solusi[0].rhs)
+            else:
+                eksp = sederhanakan(c_solusi[0])
         else:
-            rapi = str(sederhanakan(s.rhs.subs(C1, C)))\
-                .replace("log(", "ln(")\
-                .replace("atan(", "arctan(")
-            return f"y = {rapi}"
+            eksp = sederhanakan(s.rhs.subs(C1, C))
+
+        if eksp.has(sp.Integral) and integrand_v is not None and integral_kanan is not None:
+            return (f"∫ {str(integrand_v)} dv = "
+                    f"{str(integral_kanan)} + C  (v = y/x)")
+        else:
+            rapi = str(eksp).replace("log(", "ln(").replace("atan(", "arctan(")
+            return f"C = {rapi}"
 
     if isinstance(solusi, list):
         hasil = list(dict.fromkeys([proses(s) for s in solusi]))
         return "\n".join(hasil)
-    else:
-        return proses(solusi)
+    return proses(solusi)
 
 def rapikan_angka(angka):
     """Membulatkan angka maksimal 3 desimal dan menghapus nol tidak perlu."""
@@ -656,9 +670,20 @@ with tab1:
                 with st.spinner("Mengecek homogenitas..."):
                     homogen = cek_homogen(fungsi_pd)
 
-                if homogen:
+                 if homogen:
+                    
+                    # Siapkan integrand dan integral untuk fallback tampilan
+                    ekspresi_v = sp.simplify(fungsi_pd.subs(y, v*x))
+                    ruas_kanan = sp.simplify(ekspresi_v - v)
+                    if not sp.simplify(ruas_kanan).is_zero:
+                        integrand_v = 1 / ruas_kanan
+                        integral_kanan = sp.integrate(1/x, x)
+                    else:
+                        integrand_v = None
+                        integral_kanan = None
+                
                     pd, y_fungsi = selesaikan_pd(fungsi_pd)
-
+                
                     if pakai_syarat:
                         solusi_umum = sp.dsolve(pd)
                         if isinstance(solusi_umum, list):
@@ -669,7 +694,9 @@ with tab1:
                         )
                         if nilai_c:
                             angka_c = nilai_c[0]
-                            solusi_html = rapikan_solusi_html(solusi_umum)
+                            if isinstance(angka_c, sp.Eq):
+                                angka_c = angka_c.rhs
+                            solusi_html = rapikan_solusi_html(solusi_umum, integrand_v, integral_kanan)
                             ruas_html = solusi_html.split("C = ", 1)[1] if "C = " in solusi_html else solusi_html
                             st.markdown(f"""
                             <div class="solusi-box">
@@ -682,26 +709,17 @@ with tab1:
                                 </span>
                             </div>""", unsafe_allow_html=True)
                         else:
-                            st.markdown("""
-                            <div class="hasil-peringatan">
-                            ⚠️ Tidak dapat menentukan solusi khusus dengan syarat awal tersebut.
-                            </div>""", unsafe_allow_html=True)
+                            st.warning("⚠️ Tidak dapat menentukan solusi khusus.")
                     else:
                         with st.spinner("Menyelesaikan PD..."):
                             solusi = sp.dsolve(pd)
-                        solusi_html = rapikan_solusi_html(solusi)
+                        solusi_html = rapikan_solusi_html(solusi, integrand_v, integral_kanan)
                         st.markdown(f"""
                         <div class="solusi-box">
                             ✅ PD HOMOGEN DERAJAT 0<br><br>
                             <b>Solusi Umum:</b><br>
                             {solusi_html}
                         </div>""", unsafe_allow_html=True)
-                else:
-                    st.markdown("""
-                    <div class="hasil-gagal">
-❌ PD TIDAK HOMOGEN DERAJAT 0
-Program ini hanya menyelesaikan PD homogen derajat 0.
-                    </div>""", unsafe_allow_html=True)
 
             except ValueError as ve:
                 st.markdown(f'<div class="hasil-gagal">{ve}</div>', unsafe_allow_html=True)
@@ -746,59 +764,40 @@ with tab2:
             """, unsafe_allow_html=True)
         else:
             try:
-                ekspresi_langkah_bersih = bersihkan_input(ekspresi_langkah)
-                fungsi_pd = sp.sympify(ekspresi_langkah_bersih, locals={"x": x, "y": y})
+                ekspresi_bersih = bersihkan_input(ekspresi_langkah)
+                fungsi_pd = sp.sympify(ekspresi_bersih, locals={"x": x, "y": y})
 
                 if not cek_homogen(fungsi_pd):
-                    st.markdown("""
-                    <div class="hasil-gagal">❌ PD TIDAK HOMOGEN DERAJAT 0.</div>
-                    """, unsafe_allow_html=True)
+                    st.markdown('<div class="hasil-gagal">❌ PD TIDAK HOMOGEN DERAJAT 0.</div>', unsafe_allow_html=True)
                 else:
                     with st.spinner("Menyusun langkah penyelesaian..."):
-                        langkah_list = buat_langkah(ekspresi_langkah_bersih, fungsi_pd)
+                        langkah_list = buat_langkah(ekspresi_bersih, fungsi_pd)
 
                     for i, (judul_l, isi_l) in enumerate(langkah_list):
-                        st.markdown(f"""
-                        <div class="langkah-judul">{judul_l}</div>
-                        """, unsafe_allow_html=True)
-                    
+                        st.markdown(f'<div class="langkah-judul">{judul_l}</div>', unsafe_allow_html=True)
                         if i == 0:
-                            isi_html = format_teks_pecahan(isi_l)
-                            st.markdown(isi_html, unsafe_allow_html=True)
-                    
+                            st.markdown(format_teks_pecahan(isi_l), unsafe_allow_html=True)
                         elif i == 1:
                             ekspresi_obj = fungsi_pd
                             ekspresi_mentah = ekspresi_obj.subs(x, t*x).subs(y, t*y)
-                        
-                            # Jika t hilang karena dicoret, gunakan simbol tx, ty
                             if t not in ekspresi_mentah.free_symbols:
                                 tx = sp.Symbol('tx')
                                 ty = sp.Symbol('ty')
                                 ekspresi_mentah = ekspresi_obj.subs(x, tx).subs(y, ty)
-                        
-                            html_mentah    = sympy_ke_html(ekspresi_mentah, sederhanakan_dulu=False)
+                            html_mentah = sympy_ke_html(ekspresi_mentah, sederhanakan_dulu=False)
                             ekspresi_sederhana = sp.simplify(ekspresi_obj.subs(x, t*x).subs(y, t*y))
-                            hasil_bagi         = sp.simplify(ekspresi_obj.subs(x, t*x).subs(y, t*y) / ekspresi_obj)
-                            html_asli          = sympy_ke_html(ekspresi_obj)
-                            html_sederhana     = sympy_ke_html(ekspresi_sederhana)
-                            html_hasil         = sympy_ke_html(hasil_bagi)
-                        
+                            hasil_bagi = sp.simplify(ekspresi_obj.subs(x, t*x).subs(y, t*y) / ekspresi_obj)
+                            html_asli = sympy_ke_html(ekspresi_obj)
+                            html_sederhana = sympy_ke_html(ekspresi_sederhana)
+                            html_hasil = sympy_ke_html(hasil_bagi)
                             st.markdown("Ganti x → tx &nbsp; dan &nbsp; y → ty :", unsafe_allow_html=True)
-                            st.markdown(f"**f(x, y)** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= &nbsp;{html_asli}", unsafe_allow_html=True)
-                            st.markdown(f"**f(tx, ty)** = &nbsp;{html_mentah}", unsafe_allow_html=True)
-                            st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= &nbsp;{html_sederhana} &nbsp;*(setelah disederhanakan)*", unsafe_allow_html=True)
-                            st.markdown(f"""
-                            <span class="pecahan">
-                                <span class="pecahan-atas">f(tx,&nbsp;ty)</span>
-                                <span class="pecahan-bawah">f(x,&nbsp;y)</span>
-                            </span>
-                            &nbsp;= &nbsp;{html_hasil}
-                            """, unsafe_allow_html=True)
-                            st.success("✓ Variabel t hilang → PD Homogen Derajat 0")                                            
+                            st.markdown(f"**f(x, y)** = {html_asli}", unsafe_allow_html=True)
+                            st.markdown(f"**f(tx, ty)** = {html_mentah} &nbsp;= {html_sederhana} *(setelah disederhanakan)*", unsafe_allow_html=True)
+                            st.markdown(f"<span class='pecahan'><span class='pecahan-atas'>f(tx, ty)</span><span class='pecahan-bawah'>f(x, y)</span></span> = {html_hasil}", unsafe_allow_html=True)
+                            st.success("✓ Variabel t hilang → PD Homogen Derajat 0")
                         else:
                             isi_l = isi_l.replace("*", "")
-                            isi_html = format_teks_pecahan(isi_l)
-                            st.markdown(isi_html, unsafe_allow_html=True)
+                            st.markdown(format_teks_pecahan(isi_l), unsafe_allow_html=True)
 
             except Exception as err:
                 st.markdown(f"""
