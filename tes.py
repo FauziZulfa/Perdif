@@ -670,7 +670,7 @@ with tab1:
                 with st.spinner("Mengecek homogenitas..."):
                     homogen = cek_homogen(fungsi_pd)
 
-                 if homogen:
+                if homogen:
                     
                     # Siapkan integrand dan integral untuk fallback tampilan
                     ekspresi_v = sp.simplify(fungsi_pd.subs(y, v*x))
