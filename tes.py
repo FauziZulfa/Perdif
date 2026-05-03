@@ -646,13 +646,13 @@ with tab1:
 
     if pakai_syarat:
         st.markdown("""
-        <div class="info-box">Format: y(x) = a</div>
+        <div class="info-box">Format: y(x₀) = y₀</div>
         """, unsafe_allow_html=True)
         kol1, kol2 = st.columns(2)
         with kol1:
-            x_awal = st.number_input("Masukkan nilai x : ", value=0.0, key="x_awal", step=1.0)
+            x_awal = st.number_input("Masukkan nilai x₀ : ", value=0.0, key="x_awal", step=1.0)
         with kol2:
-            y_awal = st.number_input("Masukkan nilai a :", value=0.0, key="y_awal", step=1.0)
+            y_awal = st.number_input("Masukkan nilai y₀ :", value=0.0, key="y_awal", step=1.0)
 
     if st.button("✨ Selesaikan!", type="primary", key="btn_kalkulator"):
         if not ekspresi_str.strip():
