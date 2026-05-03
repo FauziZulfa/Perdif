@@ -443,14 +443,12 @@ def buat_langkah(ekspresi_str, ekspresi):
         f"dy/dx = {ekspresi_str}"))
 
     # Langkah 2: Uji homogenitas
-    ekspresi_diganti = ekspresi.subs(x, t*x).subs(y, t*y)
-    ekspresi_diganti_sederhana = sp.simplify(ekspresi_diganti)
+    ekspresi_diganti = sp.simplify(ekspresi.subs(x, t*x).subs(y, t*y))
     hasil_bagi = sp.simplify(ekspresi_diganti / ekspresi)
-    
     langkah.append(("2️⃣  Uji Homogenitas",
         f"Ganti x → tx  dan  y → ty :\n\n"
         f"f(x, y)       = {ekspresi}\n\n"
-        f"f(tx, ty)   = {ekspresi_diganti_sederhana}\n\n"
+        f"f(tx, ty)   = {ekspresi_diganti}\n\n"
         f"f(tx, ty)\n"
         f"──────────── = {hasil_bagi}\n"
         f"f(x, y)\n\n"
@@ -468,17 +466,14 @@ def buat_langkah(ekspresi_str, ekspresi):
     ekspresi_v = sp.simplify(ekspresi.subs(y, v*x))
     ruas_kanan = sp.simplify(ekspresi_v - v)
     
-    pecahan_kiri = sympy_ke_html(1/ruas_kanan)
-    pecahan_kanan = sympy_ke_html(1/x)
-
-    if ruas_kanan == 0:
+    if sp.simplify(ruas_kanan).is_zero:
+        # Kasus khusus v + x dv/dx = v (ruas kanan 0)
         langkah.append(("4️⃣  Bentuk Setelah Substitusi",
             f"dy/dx = {sympy_ke_html(ekspresi)}\n\n"
             f"Substitusi (1) dan (2):\n\n"
             f"v + x dv/dx = {sympy_ke_html(ekspresi_v)}\n\n"
             f"x dv/dx = 0\n\n"
-            f"dv/dx = 0"
-        ))
+            f"dv/dx = 0"))
     else:
         langkah.append(("4️⃣  Bentuk Setelah Substitusi",
             f"dy/dx = {sympy_ke_html(ekspresi)}\n\n"
@@ -486,37 +481,41 @@ def buat_langkah(ekspresi_str, ekspresi):
             f"v + x dv/dx = {sympy_ke_html(ekspresi_v)}\n\n"
             f"x dv/dx = {sympy_ke_html(ekspresi_v)} - v = {sympy_ke_html(ruas_kanan)}\n\n"
             f"Pisahkan variabel x dan v :\n"
-            f"   {pecahan_kiri} dv = {pecahan_kanan} dx"
-        ))
+            f"   {sympy_ke_html(1/ruas_kanan)} dv = {sympy_ke_html(1/x)} dx"))
 
     # Langkah 5: Integrasi
-    integral_kiri = sp.integrate(1/ruas_kanan, v)
+    integral_kiri = sp.integrate(1/ruas_kanan, v) if not sp.simplify(ruas_kanan).is_zero else sp.Integer(0)
     integral_kanan = sp.integrate(1/x, x)
 
-    if ruas_kanan == 0: 
+    if sp.simplify(ruas_kanan).is_zero: 
         langkah.append(("5️⃣  Integralkan Kedua Ruas",
             "dv/dx = 0\n\n"
             "Hasil Integrasi:\n"
             "v = C\n\n"
-            "Substitusi kembali v = y/x → y = Cx"
-        ))
+            "Substitusi kembali v = y/x → y = Cx"))
     else:
         langkah.append(("5️⃣  Integralkan Kedua Ruas",
             f"∫ {sympy_ke_html(1/ruas_kanan)} dv = ∫ {sympy_ke_html(1/x)} dx\n\n"
             f"Hasil Integrasi:\n"
             f"   {sympy_ke_html(integral_kiri)} = {sympy_ke_html(integral_kanan)} + C\n\n"
-            f"Substitusi kembali v = y/x"
-        ))
+            f"Substitusi kembali v = y/x"))
 
     # Langkah 6: Solusi umum
     y_fungsi = sp.Function('y')
     pd = sp.Eq(y_fungsi(x).diff(x), ekspresi.subs(y, y_fungsi(x)))
     solusi = sp.dsolve(pd)
 
-    solusi_html = rapikan_solusi_html(solusi)
+    # Cek apakah solusi mengandung Integral
+    solusi_ekspresi = solusi.rhs if not isinstance(solusi, list) else solusi[0].rhs
+    if solusi_ekspresi.has(sp.Integral) and not sp.simplify(ruas_kanan).is_zero:
+        # Gunakan hasil integral dari langkah 5
+        solusi_html = (f"∫ {sympy_ke_html(1/ruas_kanan)} dv = "
+                       f"{sympy_ke_html(integral_kanan)} + C<br>"
+                       f"Substitusi v = y/x")
+    else:
+        solusi_html = rapikan_solusi_html(solusi)
 
     langkah.append(("6️⃣  Solusi Umum", solusi_html))
-
     return langkah
 
 
